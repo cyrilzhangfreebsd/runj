@@ -28,13 +28,13 @@ type Spec struct {
 	Process *Process `json:"process,omitempty"`
 	// Root configures the container's root filesystem.
 	Root *Root `json:"root,omitempty"`
+	// Mounts configures additional mounts (on top of Root).
+	Mounts []Mount `json:"mounts,omitempty"`
 
 	// Modification by Samuel Karp
 	/*
 		// Hostname configures the container's hostname.
 		Hostname string `json:"hostname,omitempty"`
-		// Mounts configures additional mounts (on top of Root).
-		Mounts []Mount `json:"mounts,omitempty"`
 		// Hooks configures callbacks for container lifecycle events.
 		Hooks *Hooks `json:"hooks,omitempty" platform:"linux,solaris"`
 		// Annotations contains arbitrary metadata for the container.
@@ -120,10 +120,21 @@ type Root struct {
 	// End of modification
 }
 
+// Mount specifies a mount for a container.
+type Mount struct {
+	// Destination is the absolute path where the mount will be placed in the container.
+	Destination string `json:"destination"`
+	// Type specifies the mount kind.
+	Type string `json:"type,omitempty" platform:"linux,solaris"`
+	// Source specifies the source path of the mount.
+	Source string `json:"source,omitempty"`
+	// Options are fstab style mount options.
+	Options []string `json:"options,omitempty"`
+}
+
 // Modification by Samuel Karp
 /*
 Omitted type definitions for:
-Mount
 Hook
 Hooks
 Linux

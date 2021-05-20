@@ -103,12 +103,9 @@ the console's pseudoterminal`)
 		if err != nil {
 			return err
 		}
-		rootPath := filepath.Join(bundle, "root")
-		if ociConfig != nil && ociConfig.Root != nil && ociConfig.Root.Path != "" {
-			rootPath = ociConfig.Root.Path
-			if rootPath[0] != filepath.Separator {
-				rootPath = filepath.Join(bundle, rootPath)
-			}
+		fmt.Println(ociConfig.Mounts);
+		if ociConfig == nil || ociConfig.Root == nil || ociConfig.Root.Path == "" {
+			return errors.New("Root path is required in config.json")
 		}
 		// console socket validation
 		if ociConfig.Process.Terminal {
@@ -126,7 +123,7 @@ the console's pseudoterminal`)
 			return errors.New("console-socket provided but Process.Terminal is false")
 		}
 		var confPath string
-		confPath, err = jail.CreateConfig(id, rootPath)
+		confPath, err = jail.CreateConfig(id, bundle, ociConfig)
 		if err != nil {
 			return err
 		}
