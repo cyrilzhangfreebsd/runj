@@ -30,6 +30,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"bufio"
+	"syscall"
 	"strconv"
 
 	"github.com/containerd/console"
@@ -44,7 +46,7 @@ func main() {
 	os.Exit(exit)
 }
 
-var usage = errors.New("usage: runj-entrypoint JAIL-ID FIFO-PATH PROGRAM [ARGS...]")
+var usage = errors.New("usage: runj-entrypoint JAIL-ID FIFO-PATH RFILE-PATH PROGRAM [ARGS...]")
 
 const (
 	jexecPath        = "/usr/sbin/jexec"
@@ -60,7 +62,8 @@ func _main() (int, error) {
 	}
 	jid := os.Args[1]
 	fifoPath := os.Args[2]
-	argv := os.Args[3:]
+	rfilePath := os.Args[3]
+	argv := os.Args[4:]
 
 	if err := setupConsole(); err != nil {
 		return 2, err
@@ -77,11 +80,55 @@ func _main() (int, error) {
 		}
 	}
 
+	if err := setRlimits(rfilePath); err != nil {
+		return 5, err
+	}
+
 	// call unix.Exec (which is execve(2)) to replace this process with the jexec
 	if err := unix.Exec(jexecPath, append([]string{"jexec", jid}, argv...), unix.Environ()); err != nil {
 		return 6, fmt.Errorf("failed to exec: %w", err)
 	}
 	return 0, nil
+}
+
+func setRlimits(rfilePath string) error {
+	f, err := os.Open(rfilePath)
+
+	if err != nil {
+		return err
+	}
+
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	scanner.Split(bufio.ScanWords)
+
+	for scanner.Scan() {
+	//	rType := scanner.Text()
+		scanner.Scan()
+		rHard := scanner.Text()
+		scanner.Scan()
+		rSoft := scanner.Text()
+
+		var rlimit syscall.Rlimit
+		rlimit.Max, err = strconv.ParseInt(rHard, 10, 64)
+		if err != nil {
+			return err
+		}
+		rlimit.Cur, err = strconv.ParseInt(rSoft, 10, 64)
+		if err != nil {
+			return err
+		}
+
+		err = syscall.Setrlimit(syscall.RLIMIT_FSIZE, &rlimit)
+		if err != nil {
+			return err
+		}
+	}
+
+	print("If you see this, you are running the compiled version of runj-entrypoint")
+
+	return nil
 }
 
 func setupConsole() error {

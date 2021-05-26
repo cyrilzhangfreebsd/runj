@@ -151,14 +151,15 @@ the console's pseudoterminal`)
 			}
 			jail.Unmount(ociConfig)
 		}()
-		_, err = createLimitFile(id, rootPath, ociConfig.Process.Rlimits)
+		var rfilePath string
+		rfilePath, err = createLimitFile(id, rootPath, ociConfig.Process.Rlimits)
 		if err != nil {
 			return err
 		}
 		// Setup and start the "runj-entrypoint" helper program in order to
 		// get the container STDIO hooked up properly.
 		var entrypoint *exec.Cmd
-		entrypoint, err = jail.SetupEntrypoint(id, true, ociConfig.Process.Args, ociConfig.Process.Env, *consoleSocket)
+		entrypoint, err = jail.SetupEntrypoint(id, true, ociConfig.Process.Args, ociConfig.Process.Env, *consoleSocket, rfilePath)
 		if err != nil {
 			return err
 		}
