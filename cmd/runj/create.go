@@ -2,7 +2,9 @@ package main
 
 import (
 	"errors"
+	"bytes"
 	"fmt"
+	"strconv"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -149,7 +151,10 @@ the console's pseudoterminal`)
 			}
 			jail.Unmount(ociConfig)
 		}()
-
+		_, err = createLimitFile(id, rootPath, ociConfig.Process.Rlimits)
+		if err != nil {
+			return err
+		}
 		// Setup and start the "runj-entrypoint" helper program in order to
 		// get the container STDIO hooked up properly.
 		var entrypoint *exec.Cmd
@@ -163,4 +168,30 @@ the console's pseudoterminal`)
 		return nil
 	}
 	return create
+}
+
+func createLimitFile(id, root string, rlimits []runtimespec.POSIXRlimit) (string, error) {
+	buf := bytes.Buffer{}
+	for _, rlimit := range rlimits {
+		buf.WriteString(rlimit.Type + " ")
+		buf.WriteString(strconv.FormatUint(rlimit.Hard, 10) + " ")
+		buf.WriteString(strconv.FormatUint(rlimit.Soft, 10) + "\n")
+	}
+	rfilePath := filepath.Join(state.Dir(id), "rlimits")
+	rfile, err2 := os.OpenFile(rfilePath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
+	if err2 != nil {
+		return "", fmt.Errorf("rlimit should not already exist")
+	}
+	defer func() {
+		rfile.Close()
+		if err2 != nil {
+			os.Remove(rfile.Name())
+		}
+	}()
+	_, err3 := rfile.Write([]byte(buf.String()))
+	if err3 != nil {
+		return "", err3
+	}
+	return rfile.Name(), nil
+
 }

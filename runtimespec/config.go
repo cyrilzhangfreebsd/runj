@@ -88,6 +88,9 @@ type Process struct {
 	// Env populates the process environment for the process.
 	Env []string `json:"env,omitempty"`
 
+	Rlimits []POSIXRlimit `json:"rlimits,omitempty"`
+	// NoNewPrivileges controls whether additional privileges could be gained by processes in the container.
+
 	// Modification by Samuel Karp`
 	/*
 		// Cwd is the current working directory for the process and must be
@@ -96,8 +99,6 @@ type Process struct {
 		// Capabilities are Linux capabilities that are kept for the process.
 		Capabilities *LinuxCapabilities `json:"capabilities,omitempty" platform:"linux"`
 		// Rlimits specifies rlimit options to apply to the process.
-		Rlimits []POSIXRlimit `json:"rlimits,omitempty" platform:"linux,solaris"`
-		// NoNewPrivileges controls whether additional privileges could be gained by processes in the container.
 		NoNewPrivileges bool `json:"noNewPrivileges,omitempty" platform:"linux"`
 		// ApparmorProfile specifies the apparmor profile for the container.
 		ApparmorProfile string `json:"apparmorProfile,omitempty" platform:"linux"`
@@ -134,6 +135,16 @@ type Mount struct {
 	Options []string `json:"options,omitempty"`
 }
 
+// POSIXRlimit type and restrictions
+type POSIXRlimit struct {
+	// Type of the rlimit to set
+	Type string `json:"type"`
+	// Hard is the hard limit for the specified type
+	Hard uint64 `json:"hard"`
+	// Soft is the soft limit for the specified type
+	Soft uint64 `json:"soft"`
+}
+
 // Modification by Samuel Karp
 /*
 Omitted type definitions for:
@@ -143,7 +154,6 @@ Linux
 LinuxNamespace
 LinuxNamespaceType
 LinuxIDMapping
-POSIXRlimit
 LinuxHugepageLimit
 LinuxInterfacePriority
 linuxBlockIODevice
