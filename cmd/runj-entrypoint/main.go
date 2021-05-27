@@ -31,7 +31,6 @@ import (
 	"fmt"
 	"os"
 	"bufio"
-	"syscall"
 	"strconv"
 
 	"github.com/containerd/console"
@@ -55,6 +54,27 @@ const (
 	// skipExecFifo signals that the exec fifo sync procedure should be skipped
 	skipExecFifo = "-"
 )
+
+var rlimitMap = map[string]int{
+	"RLIMIT_AS":         unix.RLIMIT_AS,
+	"RLIMIT_CORE":       unix.RLIMIT_CORE,
+	"RLIMIT_CPU":        unix.RLIMIT_CPU,
+	"RLIMIT_DATA":       unix.RLIMIT_DATA,
+	"RLIMIT_FSIZE":      unix.RLIMIT_FSIZE,
+	"RLIMIT_MEMLOCK":    unix.RLIMIT_MEMLOCK,
+	"RLIMIT_NOFILE":     unix.RLIMIT_NOFILE,
+	"RLIMIT_RSS":        unix.RLIMIT_RSS,
+	"RLIMIT_STACK":      unix.RLIMIT_STACK,
+	"RLIMIT_VMEM":       unix.RLIMIT_AS,
+}
+
+func strToRlimit(key string) (int, error) {
+	rlimit, err := rlimitMap[key]
+	if !err {
+		return 0, fmt.Errorf("wrong rlimit value: %s", key)
+	}
+	return rlimit, nil
+}
 
 func _main() (int, error) {
 	if len(os.Args) < 4 {
@@ -104,13 +124,13 @@ func setRlimits(rfilePath string) error {
 	scanner.Split(bufio.ScanWords)
 
 	for scanner.Scan() {
-	//	rType := scanner.Text()
+		rType := scanner.Text()
 		scanner.Scan()
 		rHard := scanner.Text()
 		scanner.Scan()
 		rSoft := scanner.Text()
 
-		var rlimit syscall.Rlimit
+		var rlimit unix.Rlimit
 		rlimit.Max, err = strconv.ParseInt(rHard, 10, 64)
 		if err != nil {
 			return err
@@ -119,14 +139,19 @@ func setRlimits(rfilePath string) error {
 		if err != nil {
 			return err
 		}
-
-		err = syscall.Setrlimit(syscall.RLIMIT_FSIZE, &rlimit)
+	
+		var rlimitVal int
+		rlimitVal, err = strToRlimit(rType)
+		if err != nil {
+			return err
+		}
+		err = unix.Setrlimit(rlimitVal, &rlimit)
 		if err != nil {
 			return err
 		}
 	}
 
-	print("If you see this, you are running the compiled version of runj-entrypoint")
+	println("If you see this, you are running the compiled version of runj-entrypoint")
 
 	return nil
 }
